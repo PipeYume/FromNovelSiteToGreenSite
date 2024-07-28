@@ -8,6 +8,7 @@
 // @match        *://syosetu.org/*
 // @match        *://novelup.plus/*
 // @match        *://syosetu.com/*
+// @match        *://ncode.syosetu.com/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
