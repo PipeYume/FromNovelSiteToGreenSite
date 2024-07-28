@@ -7,6 +7,7 @@
 // @match        *://kakuyomu.jp/*
 // @match        *://syosetu.org/*
 // @match        *://novelup.plus/*
+// @match        *://syosetu.com/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -32,10 +33,13 @@
     });
 
     GM_registerMenuCommand(`切换绿站 URL (当前: ${baseURL})`, () => {
-        baseURL = baseURL === 'https://books.fishhawk.top' ? 'https://books1.fishhawk.top' : 'https://books.fishhawk.top';
-        GM_setValue('baseURL', baseURL);
-        alert(`绿站 URL 已切换为 ${baseURL}`);
-        location.reload(); // Reload the page to apply the new setting
+        let newURL = prompt("请输入新的绿站 URL:", baseURL);
+        if (newURL) {
+            baseURL = newURL;
+            GM_setValue('baseURL', baseURL);
+            alert(`绿站 URL 已切换为 ${baseURL}`);
+            location.reload(); // Reload the page to apply the new setting
+        }
     });
 
     GM_registerMenuCommand('清除书籍信息缓存', () => {
@@ -81,6 +85,16 @@
                 pattern: /^https:\/\/novelup\.plus\/story\/(\d+)$/,
                 convert: (match) => `${baseURL}/api/novel/novelup/${match[1]}`
             }
+        },
+        'ncode.syosetu.com': {
+            "toGreenSiteUrl": {
+                pattern: /^https:\/\/ncode\.syosetu\.com\/([a-z0-9]+)(\/\d+)?\/?$/,
+                convert: (match) => `${baseURL}/novel/syosetu/${match[1]}${match[2] ? `/${match[2].slice(1)}` : ''}`
+            },
+            "toBookInfoApiUrl": {
+                pattern: /^https:\/\/ncode\.syosetu\.com\/([a-z0-9]+)\/?$/,
+                convert: (match) => `${baseURL}/api/novel/syosetu/${match[1]}`
+            }
         }
     };
 
@@ -99,39 +113,60 @@
         return null;
     }
 
+    function findDeepestElementWithText(element, text, maxLength = 15) {
+        // 标题太长，在小说站会被截断，所以只用对比 text的前面的字符。比如显示成 "xxx..."
+        text = text.length > maxLength ? text.slice(0, maxLength) : text;
+        if (element.textContent.includes(text.trim())){
+            for (let child of element.children) {
+                if (child.children.length > 0) {
+                    const found = findDeepestElementWithText(child, text);
+                    if (found) return found;
+                } else if (child.textContent.includes(text.trim())) {
+                    return child;
+                }
+            }
+            return element;
+        }
+        return null
+    }
     function insertTranslatedTitle(link, data, greenSiteUrl) {
-        let translatedTitleElement = link.parentElement.querySelector('.translated-title');
         const titleJp = data.titleJp;
         const titleZh = data.titleZh;
-        const linkText = link.textContent.trim();
-
-        if (titleJp && linkText.includes(titleJp.trim())) {
-            // If .translated-title element doesn't exist, create a new one
+        
+        // 查找包含 titleJp 的最底层子元素
+        const targetElement = findDeepestElementWithText(link, titleJp.trim());
+    
+        if (targetElement) {
+            // 如果 .translated-title 元素不存在，创建一个新的
+            let translatedTitleElement = targetElement.parentElement.querySelector('.translated-title');
             if (!translatedTitleElement) {
                 translatedTitleElement = document.createElement('div');
                 translatedTitleElement.className = 'translated-title';
-                translatedTitleElement.style.color = 'green'; // Optional: Custom styling
+                translatedTitleElement.style.color = 'green'; // 可选：自定义样式
                 translatedTitleElement.style.fontWeight = 'bold';
-                link.parentElement.insertBefore(translatedTitleElement, link.nextSibling);
+            } else {
+                // 如果已经存在，先清空内容
+                translatedTitleElement.textContent = "";
             }
-
-            // Clear previous content
-            translatedTitleElement.textContent = "";
-
-            // Create the translated title with a link
+    
+            // 创建带有链接的翻译标题
             if (greenSiteUrl) {
                 const translatedTitleLink = document.createElement('a');
                 translatedTitleLink.href = greenSiteUrl;
                 translatedTitleLink.textContent = titleZh ? titleZh : "暂无译名";
-                translatedTitleLink.style.color = 'green'; // Optional: Custom styling for link
+                translatedTitleLink.style.color = 'green'; // 可选：链接的自定义样式
                 translatedTitleElement.appendChild(translatedTitleLink);
             } else {
                 translatedTitleElement.textContent = titleZh ? titleZh : "暂无译名";
             }
+    
+            // 插入到 targetElement 之后
+            targetElement.parentElement.insertBefore(translatedTitleElement, targetElement.nextSibling);
         }
     }
 
     function fetchAndInsertTranslatedTitle(link) {
+        const href = link.href;
         const bookInfoApiUrl = convertUrl(link.href, "toBookInfoApiUrl");
         const greenSiteUrl = convertUrl(link.href, "toGreenSiteUrl");
         if (!bookInfoApiUrl) return;
@@ -164,7 +199,7 @@
         const links = document.querySelectorAll('a');
         links.forEach(link => {
             if (showTranslatedTitle) {
-                let translatedTitleElement = link.parentElement.querySelector('.translated-title');
+                let translatedTitleElement = link.querySelector('.translated-title');
                 if (!translatedTitleElement) {
                     fetchAndInsertTranslatedTitle(link);
                 }
