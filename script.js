@@ -2,7 +2,7 @@
 // @name         从小说站到绿站 by PipeYume
 // @namespace    http://tampermonkey.net/
 // @version      1.6
-// @description  在小说源站获取轻小说机翻机器人的体验。目前功能。检测小说站标题，获取绿站的中文译名标题加在其下，点击中文译名标题可以跳转到绿站。80%都是GPT写的。TODO: 1. 匹配绿站支持的所有小说站域名。2. 在小说站显示绿站的翻译。
+// @description  在小说源站获取轻小说机翻机器人的体验。目前功能：检测小说站标题，获取绿站的中文译名标题加在其下，点击中文译名标题可以跳转到绿站。80%都是GPT写的。TODO: 在小说站自动显示绿站的翻译。
 // @author       PipeYume
 // @match        *://kakuyomu.jp/*
 // @match        *://syosetu.org/*
