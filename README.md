@@ -1,0 +1,2 @@
+# FromNovelSiteToGreenSite
+ 在小说源站上获取轻小说机翻机器人站的体验
