@@ -217,14 +217,23 @@
         }
     }
 
-    // Function to process all links on the page
+    const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const link = entry.target;
+                fetchAndInsertTranslatedTitle(link);
+                obs.unobserve(link);
+            }
+        });
+    }, { rootMargin: '0px', threshold: [0.1, 0.5, 1.0] }); // Added multiple thresholds
+
     function processLinks() {
         const links = document.querySelectorAll('a');
         links.forEach(link => {
             if (showTranslatedTitle) {
                 let translatedTitleElement = link.querySelector('.translated-title');
                 if (!translatedTitleElement) {
-                    fetchAndInsertTranslatedTitle(link);
+                    observer.observe(link); // Observe each link to check its visibility
                 }
             }
         });
@@ -246,9 +255,9 @@
     }
 
     // Optimized MutationObserver
-    const observer = new MutationObserver(throttle((mutations) => {
+    const mutationObserver = new MutationObserver(throttle((mutations) => {
         // 在回调开始时停止观察，以避免因自身引发的变更触发无限循环
-        observer.disconnect();
+        mutationObserver.disconnect();
 
         // 处理变更
         mutations.forEach((mutation) => {
@@ -259,12 +268,12 @@
         });
 
         // 重新启动观察
-        observer.observe(targetNode, config);
+        mutationObserver.observe(targetNode, config);
     }, 1000)); // Adjust the throttle time as needed
 
     // Start observing the document for changes
     const targetNode = document.body; // You can change this to a more specific target if needed
     const config = { childList: true, subtree: true };
-    observer.observe(targetNode, config);
+    mutationObserver.observe(targetNode, config);
 
 })();
