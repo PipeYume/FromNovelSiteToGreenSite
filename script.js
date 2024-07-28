@@ -96,6 +96,28 @@
                 pattern: /^https:\/\/ncode\.syosetu\.com\/([a-z0-9]+)\/?$/,
                 convert: (match) => `${baseURL}/api/novel/syosetu/${match[1]}`
             }
+        },
+        'www.pixiv.net': {
+            "toGreenSiteUrl": {
+                pattern: /^https:\/\/www\.pixiv\.net\/novel\/(show\.php\?id=(\d+)|series\/(\d+))$/,
+                convert: (match) => {
+                    if (match[2]) {
+                        return `${baseURL}/novel/pixiv/s${match[2]}`;
+                    } else if (match[3]) {
+                        return `${baseURL}/novel/pixiv/${match[3]}`;
+                    }
+                }
+            },
+            "toBookInfoApiUrl": {
+                pattern: /^https:\/\/www\.pixiv\.net\/novel\/(show\.php\?id=(\d+)|series\/(\d+))$/,
+                convert: (match) => {
+                    if (match[2]) {
+                        return `${baseURL}/api/novel/pixiv/s${match[2]}`;
+                    } else if (match[3]) {
+                        return `${baseURL}/api/novel/pixiv/${match[3]}`;
+                    }
+                }
+            }
         }
     };
 
@@ -169,8 +191,8 @@
     function fetchAndInsertTranslatedTitle(link) {
         const href = link.href;
         const bookInfoApiUrl = convertUrl(link.href, "toBookInfoApiUrl");
-        const greenSiteUrl = convertUrl(link.href, "toGreenSiteUrl");
         if (!bookInfoApiUrl) return;
+        const greenSiteUrl = convertUrl(link.href, "toGreenSiteUrl");
         if (bookInfoCache[bookInfoApiUrl]) {
             // Use cached data
             insertTranslatedTitle(link, bookInfoCache[bookInfoApiUrl], greenSiteUrl);
@@ -188,7 +210,7 @@
                         saveBookInfoCache(); // Save updated cache to local storage
                         insertTranslatedTitle(link, data, greenSiteUrl);
                     } catch (e) {
-                        console.error('Failed to parse JSON:', e);
+                        console.error(`Href: ${href}. Failed to parse JSON:`, e);
                     }
                 }
             });
@@ -222,17 +244,27 @@
             }, wait);
         };
     }
+
     // Optimized MutationObserver
     const observer = new MutationObserver(throttle((mutations) => {
+        // 在回调开始时停止观察，以避免因自身引发的变更触发无限循环
+        observer.disconnect();
+
+        // 处理变更
         mutations.forEach((mutation) => {
             if (mutation.type === 'childList') {
                 // Process links only when there are new links added
                 processLinks();
             }
         });
+
+        // 重新启动观察
+        observer.observe(targetNode, config);
     }, 1000)); // Adjust the throttle time as needed
+
     // Start observing the document for changes
     const targetNode = document.body; // You can change this to a more specific target if needed
     const config = { childList: true, subtree: true };
     observer.observe(targetNode, config);
+
 })();
